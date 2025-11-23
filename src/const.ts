@@ -1,7 +1,7 @@
 import { css, svg } from "lit";
 
 export const WAKE_WORDS: Record<string, string> = {
-  ok_nabu: "Okay, Nabu",
+  hey_nexus: "Hey Nexus",
 };
 
 export const ICON_CHEVRON_SLOTTED = svg`

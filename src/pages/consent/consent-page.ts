@@ -1,11 +1,14 @@
 import { LitElement, PropertyValues, css, html } from "lit";
-import { customElement, property, query } from "lit/decorators.js";
+import { customElement, property, query, state } from "lit/decorators.js";
 import "@material/web/checkbox/checkbox";
 import "@material/web/button/text-button";
 import "@material/web/textfield/filled-text-field";
+import "@material/web/select/filled-select";
+import "@material/web/select/select-option";
 import "../../components/card-layout";
 import { WAKE_WORDS, ICON_CHEVRON_SLOTTED, PAGE_STYLES } from "../../const";
 import { preloadImage } from "../../util/preload";
+import { LEGACY_ACCENTS, AGES, GENDERS } from "../../util/demographics";
 
 @customElement("consent-page")
 export class ConsentPage extends LitElement {
@@ -15,7 +18,15 @@ export class ConsentPage extends LitElement {
   @property() public wakeWord!: string;
   @property() public description!: string;
 
-  @query("md-filled-text-field") private descriptionField!: HTMLInputElement;
+  @state() private selectedLanguageCode: string = "";
+  @state() private selectedAccent: string = "";
+  @state() private selectedAge: string = "";
+  @state() private selectedGender: string = "";
+
+  @query("md-filled-select.language-code") private languageCodeSelect!: any;
+  @query("md-filled-select.accent") private accentSelect!: any;
+  @query("md-filled-select.age") private ageSelect!: any;
+  @query("md-filled-select.gender") private genderSelect!: any;
 
   @query("md-checkbox") private consentCheckbox!: HTMLInputElement;
 
@@ -23,8 +34,56 @@ export class ConsentPage extends LitElement {
     super.firstUpdated(changedProperties);
 
     preloadImage("./images/demo.gif");
+  }
 
-    this.descriptionField.value = this.description;
+  getLanguageDisplayName(code: string): string {
+    const languageNames: Record<string, string> = {
+      br: 'Breton',
+      ca: 'Catalan',
+      cy: 'Welsh',
+      de: 'German',
+      en: 'English',
+      eo: 'Esperanto',
+      es: 'Spanish',
+      eu: 'Basque',
+      fr: 'French',
+      'nan-tw': 'Taiwanese Hokkien',
+      nl: 'Dutch',
+      'ga-IE': 'Irish',
+      gl: 'Galician',
+      'zh-TW': 'Traditional Chinese (Taiwan)',
+      'zh-CN': 'Simplified Chinese (China)',
+    };
+    return languageNames[code] || code;
+  }
+
+  renderAccentOptions() {
+    if (!this.selectedLanguageCode) {
+      return html``;
+    }
+
+    const accents = LEGACY_ACCENTS[this.selectedLanguageCode];
+    if (!accents) {
+      return html``;
+    }
+
+    return Object.entries(accents as Record<string, string>).map(
+      ([accentKey, accentLabel]) => html`
+        <md-select-option value=${accentKey}>
+          <div slot="headline">${accentLabel}</div>
+        </md-select-option>
+      `,
+    );
+  }
+
+  handleLanguageCodeChange(e: any) {
+    this.selectedLanguageCode = e.target.value;
+    this.selectedAccent = ""; // Reset accent when language changes
+
+    // Reset the accent select element
+    if (this.accentSelect) {
+      this.accentSelect.value = "";
+    }
   }
 
   render() {
@@ -55,12 +114,76 @@ export class ConsentPage extends LitElement {
             </span>
           </label>
           <p>
-            <strong>Primary language</strong><br />
-            What language are you most comfortable with? This will help us make
-            it work better for that accent.
+            <strong>Demographics</strong><br />
+            Please provide some information to help us improve the wake word
+            engine for diverse voices.
           </p>
-          <md-filled-text-field label="Language"></md-filled-text-field>
-          <div class="helper">Example: Dutch</div>
+          <md-filled-select
+            class="language-code"
+            label="Language"
+            @change=${this.handleLanguageCodeChange}
+          >
+            <md-select-option value="">
+              <div slot="headline">Select your language</div>
+            </md-select-option>
+            ${Object.keys(LEGACY_ACCENTS).map(
+              (code) => html`
+                <md-select-option value=${code}>
+                  <div slot="headline">${this.getLanguageDisplayName(code)}</div>
+                </md-select-option>
+              `,
+            )}
+          </md-filled-select>
+          <md-filled-select
+            class="accent"
+            label="Accent/Variant"
+            .value=${this.selectedAccent}
+            ?disabled=${!this.selectedLanguageCode}
+            @change=${(e: any) => (this.selectedAccent = e.target.value)}
+          >
+            <md-select-option value="">
+              <div slot="headline">
+                ${this.selectedLanguageCode
+                  ? "Select your accent/variant"
+                  : "Select language first"}
+              </div>
+            </md-select-option>
+            ${this.renderAccentOptions()}
+          </md-filled-select>
+          <md-filled-select
+            class="age"
+            label="Age Range"
+            @change=${(e: any) => (this.selectedAge = e.target.value)}
+          >
+            <md-select-option value="">
+              <div slot="headline">Select your age range</div>
+            </md-select-option>
+            ${Object.entries(AGES).map(
+              ([key, label]) =>
+                label &&
+                html`
+                  <md-select-option value=${key}>
+                    <div slot="headline">${label}</div>
+                  </md-select-option>
+                `,
+            )}
+          </md-filled-select>
+          <md-filled-select
+            class="gender"
+            label="Gender"
+            @change=${(e: any) => (this.selectedGender = e.target.value)}
+          >
+            <md-select-option value="">
+              <div slot="headline">Select your gender</div>
+            </md-select-option>
+            ${Object.entries(GENDERS).map(
+              ([key, label]) => html`
+                <md-select-option value=${key}>
+                  <div slot="headline">${label}</div>
+                </md-select-option>
+              `,
+            )}
+          </md-filled-select>
         </div>
         <div class="card-actions" slot="actions">
           <span></span>
@@ -79,12 +202,37 @@ export class ConsentPage extends LitElement {
       return;
     }
 
-    const description = this.descriptionField.value;
-    if (!description) {
-      this.descriptionField.focus();
-      alert("Please fill in your primary language");
+    if (!this.selectedLanguageCode) {
+      this.languageCodeSelect.focus();
+      alert("Please select your language");
       return;
     }
+
+    if (!this.selectedAccent) {
+      this.accentSelect.focus();
+      alert("Please select your accent/variant");
+      return;
+    }
+
+    if (!this.selectedAge) {
+      this.ageSelect.focus();
+      alert("Please select your age range");
+      return;
+    }
+
+    if (!this.selectedGender) {
+      this.genderSelect.focus();
+      alert("Please select your gender");
+      return;
+    }
+
+    // Combine demographics into a structured description
+    const description = JSON.stringify({
+      language: this.selectedLanguageCode,
+      accent: this.selectedAccent,
+      age: this.selectedAge,
+      gender: this.selectedGender,
+    });
 
     this.giveConsent(description);
   }
@@ -100,9 +248,11 @@ export class ConsentPage extends LitElement {
         min-width: 18px;
       }
 
-      md-filled-text-field {
+      md-filled-text-field,
+      md-filled-select {
         display: block;
         margin-top: 16px;
+        width: 100%;
       }
 
       label.formfield {

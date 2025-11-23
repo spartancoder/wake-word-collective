@@ -1,8 +1,11 @@
 const BASE_URL =
   location.hostname === "localhost"
-    ? "https://services-dev.home-assistant.workers.dev/assist/wake_word/training_data/upload"
-    : "https://services.home-assistant.io/assist/wake_word/training_data/upload";
+    ? "https://services.dev.nearlyrandombytes.dev/assist/wake_word/training_data/upload"
+    : "https://services.wwc.nearlyrandombytes.dev/assist/wake_word/training_data/upload";
 
+// const BASE_URL = "http://127.0.0.1:20080/assist/wake_word/training_data/upload";
+// const BASE_URL =
+//   "https://services.dev.nearlyrandombytes.dev/assist/wake_word/training_data/upload";
 export class Recorder {
   public expectWakeWord = false;
   public stopped = false;
@@ -41,9 +44,21 @@ export class Recorder {
       this._listeners.data();
     }
 
+    // Parse demographics from description JSON
+    let demographics: any = {};
+    try {
+      demographics = JSON.parse(this.description);
+    } catch (error) {
+      // If parsing fails, use description as-is (backward compatibility)
+      demographics = { user_content: this.description };
+    }
+
     const params = new URLSearchParams({
       wake_word: this.wakeWord,
-      user_content: this.description,
+      language: demographics.language || "",
+      accent: demographics.accent || "",
+      age: demographics.age || "",
+      gender: demographics.gender || "",
     }).toString();
 
     fetch(`${BASE_URL}?${params}`, {
