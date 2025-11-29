@@ -22,7 +22,7 @@ export class ShareURL extends LitElement {
 
   async copyToClipboard() {
     await navigator.clipboard.writeText(
-      "https://ohf-voice.github.io/wake-word-collective/",
+      "https://spartancoder.github.io/wake-word-collective/",
     );
 
     this.copied = true;
